@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Obra - Bloco</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial, sans-serif;
+background:#0f172a;
+color:white;
+}
+
+header{
+background:#020617;
+padding:15px;
+text-align:center;
+font-size:18px;
+font-weight:bold;
+box-shadow:0 2px 5px black;
+}
+
+.container{
+padding:15px;
+max-width:900px;
+margin:auto;
+}
+
+.etapa{
+background:#1e293b;
+padding:15px;
+margin-bottom:10px;
+border-radius:10px;
+cursor:pointer;
+transition:0.3s;
+}
+
+.etapa:hover{
+background:#334155;
+}
+
+.etapa.concluida{
+background:#065f46;
+}
+
+.progresso{
+background:#1e293b;
+border-radius:10px;
+overflow:hidden;
+margin-bottom:15px;
+}
+
+.progresso-barra{
+height:10px;
+background:#22c55e;
+width:0%;
+transition:0.3s;
+}
+
+.detalhe{
+display:none;
+background:#020617;
+padding:15px;
+border-radius:10px;
+margin-top:10px;
+}
+
+textarea{
+width:100%;
+height:80px;
+border-radius:8px;
+border:none;
+padding:10px;
+margin-top:10px;
+resize:none;
+}
+
+button{
+margin-top:10px;
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+background:#2563eb;
+color:white;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+.voltar{
+background:#64748b;
+margin-bottom:10px;
+}
+
+@media(max-width:600px){
+header{
+font-size:16px;
+}
+}
+</style>
+</head>
+
+<body>
+
+<header>📊 Gestão de Obra - Bloco</header>
+
+<div class="container">
+
+<div class="progresso">
+<div class="progresso-barra" id="barra"></div>
+</div>
+
+<div id="lista"></div>
+
+</div>
+
+<script>
+
+const etapas = [
+"Terraplanagem",
+"Gabarito / Formas",
+"Instalações (Sanitário, Hidráulico, Elétrico, Gás)",
+"Radier Concretado",
+"Marcação do Radier",
+"Paredes Térreo - Montagem",
+"Acabamento e Nivelamento",
+"Lajes 1° Pavimento",
+"Análise Geral - Térreo"
+];
+
+const lista = document.getElementById("lista");
+
+function salvarDados(){
+localStorage.setItem("obraDados", JSON.stringify(dados));
+}
+
+function carregarDados(){
+const salvo = localStorage.getItem("obraDados");
+return salvo ? JSON.parse(salvo) : {};
+}
+
+let dados = carregarDados();
+
+function atualizarBarra(){
+let total = etapas.length;
+let concluidas = Object.values(dados).filter(d => d.concluido).length;
+let porcentagem = (concluidas / total) * 100;
+document.getElementById("barra").style.width = porcentagem + "%";
+}
+
+function render(){
+lista.innerHTML = "";
+
+etapas.forEach((nome, i) => {
+
+const etapa = document.createElement("div");
+etapa.className = "etapa";
+
+if(dados[i]?.concluido){
+etapa.classList.add("concluida");
+}
+
+etapa.innerHTML = `
+<strong>${i+1}. ${nome}</strong>
+<div class="detalhe" id="detalhe-${i}">
+<button class="voltar" onclick="fechar(${i})">Voltar</button>
+
+<label>Observações:</label>
+<textarea onchange="salvarObs(${i}, this.value)">${dados[i]?.obs || ""}</textarea>
+
+<br>
+<button onclick="concluir(${i})">
+${dados[i]?.concluido ? "Desmarcar" : "Marcar como concluído"}
+</button>
+</div>
+`;
+
+etapa.onclick = () => abrir(i);
+
+lista.appendChild(etapa);
+
+});
+
+atualizarBarra();
+}
+
+function abrir(i){
+document.querySelectorAll(".detalhe").forEach(d => d.style.display="none");
+document.getElementById("detalhe-"+i).style.display="block";
+}
+
+function fechar(i){
+document.getElementById("detalhe-"+i).style.display="none";
+}
+
+function salvarObs(i, texto){
+if(!dados[i]) dados[i] = {};
+dados[i].obs = texto;
+salvarDados();
+}
+
+function concluir(i){
+if(!dados[i]) dados[i] = {};
+dados[i].concluido = !dados[i].concluido;
+salvarDados();
+render();
+}
+
+render();
+
+</script>
+
+</body>
+</html>
