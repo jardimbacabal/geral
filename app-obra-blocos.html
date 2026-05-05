@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Obras - Blocos</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0f172a;
+color:white;
+}
+
+header{
+background:#020617;
+padding:15px;
+text-align:center;
+font-weight:bold;
+}
+
+.container{
+padding:15px;
+max-width:900px;
+margin:auto;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+margin-bottom:10px;
+border-radius:10px;
+cursor:pointer;
+transition:0.3s;
+}
+
+.card:hover{
+background:#334155;
+}
+
+.voltar{
+background:#64748b;
+padding:10px;
+border:none;
+border-radius:8px;
+margin-bottom:10px;
+cursor:pointer;
+}
+
+.progresso{
+height:8px;
+background:#334155;
+border-radius:10px;
+overflow:hidden;
+margin-top:5px;
+}
+
+.barra{
+height:100%;
+background:#22c55e;
+width:0%;
+}
+
+textarea{
+width:100%;
+margin-top:10px;
+border-radius:8px;
+padding:8px;
+border:none;
+resize:none;
+}
+
+button{
+margin-top:8px;
+padding:8px;
+border:none;
+border-radius:8px;
+background:#2563eb;
+color:white;
+cursor:pointer;
+margin-right:5px;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+.btn-problema{
+background:#b91c1c;
+}
+
+.btn-problema:hover{
+background:#991b1b;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>📊 Gestão de Obras</header>
+
+<div class="container" id="app"></div>
+
+<script>
+
+const etapasObra = [
+"Terraplanagem",
+"Gabarito / Formas",
+"Instalações",
+"Radier Concretado",
+"Marcação do Radier",
+"Paredes Térreo",
+"Acabamento e Nivelamento",
+"Lajes 1° Pavimento",
+"Análise Geral"
+];
+
+let tela = "menu";
+let etapaAtual = null;
+let blocoAtual = null;
+
+let dados = JSON.parse(localStorage.getItem("dadosObra")) || {};
+
+const app = document.getElementById("app");
+
+function salvar(){
+localStorage.setItem("dadosObra", JSON.stringify(dados));
+}
+
+function render(){
+
+app.innerHTML = "";
+
+if(tela === "menu"){
+
+["Etapa 1","Etapa 2","Etapa 3"].forEach((etapa, i)=>{
+let card = document.createElement("div");
+card.className = "card";
+card.innerText = etapa;
+card.onclick = ()=>{
+tela = "blocos";
+etapaAtual = i+1;
+render();
+};
+app.appendChild(card);
+});
+
+}
+
+else if(tela === "blocos"){
+
+let inicio = (etapaAtual-1)*10 + 1;
+let fim = inicio + 9;
+
+let btn = document.createElement("button");
+btn.className = "voltar";
+btn.innerText = "⬅ Voltar";
+btn.onclick = ()=>{
+tela = "menu";
+render();
+};
+app.appendChild(btn);
+
+for(let i=inicio;i<=fim;i++){
+
+let progresso = calcularProgresso(i);
+let temProblema = verificarProblemaBloco(i);
+
+let card = document.createElement("div");
+card.className = "card";
+
+if(temProblema){
+card.style.border = "2px solid red";
+}
+
+card.innerHTML = `
+<strong>Bloco ${i}</strong>
+<div class="progresso">
+<div class="barra" style="width:${progresso}%"></div>
+</div>
+`;
+
+card.onclick = ()=>{
+tela = "obra";
+blocoAtual = i;
+render();
+};
+
+app.appendChild(card);
+}
+
+}
+
+else if(tela === "obra"){
+
+let btn = document.createElement("button");
+btn.className = "voltar";
+btn.innerText = "⬅ Voltar";
+btn.onclick = ()=>{
+tela = "blocos";
+render();
+};
+app.appendChild(btn);
+
+etapasObra.forEach((nome, i)=>{
+
+let etapaKey = `${blocoAtual}-${i}`;
+
+let concluido = dados[etapaKey]?.concluido;
+let problema = dados[etapaKey]?.problema;
+
+let card = document.createElement("div");
+card.className = "card";
+
+if(problema){
+card.style.background = "#7f1d1d";
+}
+else if(concluido){
+card.style.background = "#065f46";
+}
+
+card.innerHTML = `
+<strong>${nome}</strong>
+
+<textarea placeholder="Observações..."
+onchange="salvarObs('${etapaKey}', this.value)">
+${dados[etapaKey]?.obs || ""}
+</textarea>
+
+<button onclick="toggleConclusao('${etapaKey}')">
+${concluido ? "Desmarcar Conclusão" : "Concluir"}
+</button>
+
+<button class="btn-problema" onclick="toggleProblema('${etapaKey}')">
+${problema ? "Remover Problema" : "Marcar Problema"}
+</button>
+`;
+
+app.appendChild(card);
+
+});
+
+}
+
+}
+
+function salvarObs(key, texto){
+if(!dados[key]) dados[key] = {};
+dados[key].obs = texto;
+salvar();
+}
+
+function toggleConclusao(key){
+if(!dados[key]) dados[key] = {};
+dados[key].concluido = !dados[key].concluido;
+
+// se marcou concluído, remove problema automaticamente
+if(dados[key].concluido){
+dados[key].problema = false;
+}
+
+salvar();
+render();
+}
+
+function toggleProblema(key){
+if(!dados[key]) dados[key] = {};
+dados[key].problema = !dados[key].problema;
+
+// se marcou problema, tira concluído
+if(dados[key].problema){
+dados[key].concluido = false;
+}
+
+salvar();
+render();
+}
+
+function calcularProgresso(bloco){
+let total = etapasObra.length;
+let feitas = 0;
+
+etapasObra.forEach((_, i)=>{
+let key = `${bloco}-${i}`;
+if(dados[key]?.concluido) feitas++;
+});
+
+return (feitas/total)*100;
+}
+
+function verificarProblemaBloco(bloco){
+let temProblema = false;
+
+etapasObra.forEach((_, i)=>{
+let key = `${bloco}-${i}`;
+if(dados[key]?.problema){
+temProblema = true;
+}
+});
+
+return temProblema;
+}
+
+render();
+
+</script>
+
+</body>
+</html>
