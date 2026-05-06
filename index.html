@@ -32,11 +32,6 @@ padding:15px;
 margin-bottom:10px;
 border-radius:10px;
 cursor:pointer;
-transition:0.3s;
-}
-
-.card:hover{
-background:#334155;
 }
 
 .voltar{
@@ -82,18 +77,9 @@ cursor:pointer;
 margin-right:5px;
 }
 
-button:hover{
-background:#1d4ed8;
-}
-
 .btn-problema{
 background:#b91c1c;
 }
-
-.btn-problema:hover{
-background:#991b1b;
-}
-
 </style>
 
 </head>
@@ -101,27 +87,34 @@ background:#991b1b;
 <body>
 
 <header>📊 Gestão de Obras</header>
+<div class="container" id="app">Carregando...</div>
 
-<div class="container" id="app"></div>
+<!-- FIREBASE SDK NOVO -->
+<script type="module">
 
-<script>
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
 
+
+// 🔥 COLE AQUI SEU firebaseConfig
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-apiKey: "AIzaSyBW2fsq1qlA_uZj8m4HfDtdkXZqVGlDB4U",
-authDomain: "obra-e058e.firebaseapp.com",
-databaseURL: "https://obra-e058e-default-rtdb.firebaseio.com",
-projectId: "obra-e058e",
-storageBucket: "obra-e058e.firebasestorage.app",
-messagingSenderId: "763537647593",
-appId: "1:763537647593:web:c166c2283b06cf7e31cd78",
-measurementId: "G-X40NGVRR89"
+  apiKey: "AIzaSyBW2fsq1qlA_uZj8m4HfDtdkXZqVGlDB4U",
+  authDomain: "obra-e058e.firebaseapp.com",
+  databaseURL: "https://obra-e058e-default-rtdb.firebaseio.com",
+  projectId: "obra-e058e",
+  storageBucket: "obra-e058e.firebasestorage.app",
+  messagingSenderId: "763537647593",
+  appId: "1:763537647593:web:c166c2283b06cf7e31cd78",
+  measurementId: "G-X40NGVRR89"
 };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const appFirebase = initializeApp(firebaseConfig);
+const db = getFirestore(appFirebase);
+
+
+// ================== APP ==================
 
 const etapasObra = [
 "Terraplanagem",
@@ -139,13 +132,26 @@ let tela = "menu";
 let etapaAtual = null;
 let blocoAtual = null;
 
-let dados = JSON.parse(localStorage.getItem("dadosObra")) || {};
+let dados = {};
 
 const app = document.getElementById("app");
 
-function salvar(){
-localStorage.setItem("dadosObra", JSON.stringify(dados));
+// ================== FIREBASE ==================
+
+async function salvarNuvem(key, valor){
+  await setDoc(doc(db, "obra", key), valor);
 }
+
+async function carregarNuvem(){
+  const snapshot = await getDocs(collection(db, "obra"));
+  let temp = {};
+  snapshot.forEach(docu => {
+    temp[docu.id] = docu.data();
+  });
+  return temp;
+}
+
+// ================== RENDER ==================
 
 function render(){
 
@@ -264,37 +270,38 @@ app.appendChild(card);
 
 }
 
-function salvarObs(key, texto){
+// ================== FUNÇÕES ==================
+
+window.salvarObs = async function(key, texto){
 if(!dados[key]) dados[key] = {};
 dados[key].obs = texto;
-salvar();
-}
 
-function toggleConclusao(key){
+await salvarNuvem(key, dados[key]);
+};
+
+window.toggleConclusao = async function(key){
 if(!dados[key]) dados[key] = {};
 dados[key].concluido = !dados[key].concluido;
 
-// se marcou concluído, remove problema automaticamente
 if(dados[key].concluido){
 dados[key].problema = false;
 }
 
-salvar();
+await salvarNuvem(key, dados[key]);
 render();
-}
+};
 
-function toggleProblema(key){
+window.toggleProblema = async function(key){
 if(!dados[key]) dados[key] = {};
 dados[key].problema = !dados[key].problema;
 
-// se marcou problema, tira concluído
 if(dados[key].problema){
 dados[key].concluido = false;
 }
 
-salvar();
+await salvarNuvem(key, dados[key]);
 render();
-}
+};
 
 function calcularProgresso(bloco){
 let total = etapasObra.length;
@@ -321,7 +328,14 @@ temProblema = true;
 return temProblema;
 }
 
+// ================== INICIAR ==================
+
+async function iniciar(){
+dados = await carregarNuvem();
 render();
+}
+
+iniciar();
 
 </script>
 
